@@ -9,9 +9,13 @@
 uint64
 sys_exit(void)
 {
+  //Load exit msg from register 1
+  char buf[32];
+  argstr(1, buf, 32);    
+
   int n;
   argint(0, &n);
-  exit(n);
+  exit(n, buf);
   return 0;  // not reached
 }
 
@@ -32,7 +36,9 @@ sys_wait(void)
 {
   uint64 p;
   argaddr(0, &p);
-  return wait(p);
+  uint64 maddr;
+  argaddr(1, &maddr);
+  return wait(p, maddr);
 }
 
 uint64
