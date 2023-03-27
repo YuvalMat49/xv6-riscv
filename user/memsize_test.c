@@ -45,7 +45,7 @@ main(int argc, char *argv[])
   int size_after_rel = memsize();
   print_uint(size_after_rel);
 
-  exit(0);
+  exit(0,0);
 }
 
 

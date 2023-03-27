@@ -344,12 +344,22 @@ reparent(struct proc *p)
 // An exited process remains in the zombie state
 // until its parent calls wait().
 void
-exit(int status)
+exit(int status, char* exitmsg)
 {
   struct proc *p = myproc();
 
   if(p == initproc)
     panic("init exiting");
+  
+  if(exitmsg!=0)
+  {
+    memmove(p->exit_msg, exitmsg, strlen(exitmsg));    //copy exit msg to PCB
+  }
+  else
+  {
+    memset(p->exit_msg,0,32);                           //empty string
+  }
+
 
   // Close all open files.
   for(int fd = 0; fd < NOFILE; fd++){
@@ -388,7 +398,7 @@ exit(int status)
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
-wait(uint64 addr)
+wait(uint64 addr, uint64 maddr)
 {
   struct proc *pp;
   int havekids, pid;
@@ -408,6 +418,13 @@ wait(uint64 addr)
         if(pp->state == ZOMBIE){
           // Found one.
           pid = pp->pid;
+          if(maddr != 0 && copyout(p->pagetable, maddr, (char *)pp->exit_msg,
+                                   strlen(pp->exit_msg))<0)   // requested to recieve exit msg
+          {
+            release(&pp->lock);       // copying msg failed
+            release(&wait_lock);
+            return -1;
+          }
           if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
                                   sizeof(pp->xstate)) < 0) {
             release(&pp->lock);
