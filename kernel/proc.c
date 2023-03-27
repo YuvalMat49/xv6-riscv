@@ -351,13 +351,13 @@ exit(int status, char* exitmsg)
   if(p == initproc)
     panic("init exiting");
   
-  if(exitmsg!=0)
+  if(exitmsg!=0 && strlen(exitmsg)<33 && strlen(exitmsg)>0)
   {
     memmove(p->exit_msg, exitmsg, strlen(exitmsg));    //copy exit msg to PCB
   }
   else
   {
-    memset(p->exit_msg,0,32);                           //empty string
+    memset(p->exit_msg,'\0',1);                           //empty string
   }
 
 
