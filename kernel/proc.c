@@ -351,14 +351,14 @@ exit(int status, char* exitmsg)
   if(p == initproc)
     panic("init exiting");
   
-  if(exitmsg!=0 && strlen(exitmsg)<33 && strlen(exitmsg)>0)
-  {
-    memmove(p->exit_msg, exitmsg, strlen(exitmsg));    //copy exit msg to PCB
-  }
-  else
-  {
-    memset(p->exit_msg,'\0',1);                           //empty string
-  }
+  // if(exitmsg!=0 && strlen(exitmsg)<33 && strlen(exitmsg)>0)
+  // {
+  //   memmove(p->exit_msg, exitmsg, strlen(exitmsg));    //copy exit msg to PCB
+  // }
+  // else
+  // {
+  //   memset(p->exit_msg,'\0',1);                           //empty string
+  // }
 
 
   // Close all open files.
@@ -385,6 +385,7 @@ exit(int status, char* exitmsg)
   
   acquire(&p->lock);
 
+  strncpy(p->exit_msg, exitmsg, 32);
   p->xstate = status;
   p->state = ZOMBIE;
 
@@ -418,13 +419,7 @@ wait(uint64 addr, uint64 maddr)
         if(pp->state == ZOMBIE){
           // Found one.
           pid = pp->pid;
-          if(maddr != 0 && copyout(p->pagetable, maddr, (char *)pp->exit_msg,
-                                   strlen(pp->exit_msg))<0)   // requested to recieve exit msg
-          {
-            release(&pp->lock);       // copying msg failed
-            release(&wait_lock);
-            return -1;
-          }
+          copyout(p->pagetable, maddr, (char *)pp->exit_msg, sizeof(pp->exit_msg));     // copy exit msg from son to parent
           if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
                                   sizeof(pp->xstate)) < 0) {
             release(&pp->lock);
