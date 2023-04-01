@@ -105,4 +105,6 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   char exit_msg[32];           // Exit message (Task3)
+  long long accumulator;       // For new process set to 0 (Task5)
+  int ps_priority;             // Process priority scale of 1-10 (Task5)
 };
