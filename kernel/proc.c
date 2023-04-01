@@ -26,6 +26,68 @@ extern char trampoline[]; // trampoline.S
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
 
+/**
+ * @brief: returns proc with minimal accumulator value
+ * @post: proc lock is acquired
+*/
+struct proc*
+get_min_acc_proc()
+{
+  struct proc* p;
+  struct proc* pToRun = 0;
+  long long minAcc = -1;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == RUNNABLE) { 
+      if(minAcc == -1 ) {    // first process 
+          pToRun = p;
+          minAcc = p->accumulator;
+      }
+      else if (p->accumulator < minAcc){    // swap
+        release(&pToRun->lock);
+        pToRun = p;
+        minAcc = p->accumulator;
+      }
+      else {
+        release(&p->lock);
+      }
+    }
+    else {
+      release(&p->lock);
+    }
+  }
+  return pToRun;
+}
+
+/**
+ * @brief: set p's accumulator to be the minimal of proc table or 0 if only process
+ * @pre: assume p lock is acquired
+*/
+void
+set_min_acc(struct proc* p)
+{ 
+  // set accumulator to minimum of processes or 0 if it's the only process
+  int isFound = 0;
+  long long minAcc = 0;
+  struct proc *p1 = proc;
+  for(p1 = proc; p1 < &proc[NPROC]; p1++) {
+    if(p1 != p){
+      acquire(&p1->lock);
+      if(p1->state == RUNNING || p1->state == RUNNABLE){
+        if(!isFound){
+          minAcc = p1->accumulator;
+          isFound = 1;
+        }
+        else if(p1->accumulator < minAcc){
+          minAcc = p1->accumulator;
+        }
+      }
+      release(&p1->lock);
+    }
+  }
+  p->accumulator = minAcc;
+}
+
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
 // guard page.
@@ -125,6 +187,9 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+  set_min_acc(p);         // set acc to min
+  p->ps_priority = 5;     // default init priority is 5
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -165,6 +230,9 @@ freeproc(struct proc *p)
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
+  p->exit_msg[0] = 0;
+  p->accumulator = 0;
+  p->ps_priority = 0;
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
@@ -350,16 +418,6 @@ exit(int status, char* exitmsg)
 
   if(p == initproc)
     panic("init exiting");
-  
-  // if(exitmsg!=0 && strlen(exitmsg)<33 && strlen(exitmsg)>0)
-  // {
-  //   memmove(p->exit_msg, exitmsg, strlen(exitmsg));    //copy exit msg to PCB
-  // }
-  // else
-  // {
-  //   memset(p->exit_msg,'\0',1);                           //empty string
-  // }
-
 
   // Close all open files.
   for(int fd = 0; fd < NOFILE; fd++){
@@ -464,22 +522,20 @@ scheduler(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
-      release(&p->lock);
+    p = get_min_acc_proc();     // get next process to run
+    if(p==0) {    // no process found
+      continue;
     }
+    // Switch to chosen process.  It is the process's job
+    // to release its lock and then reacquire it
+    // before jumping back to us.
+    p->state = RUNNING;
+    c->proc = p;
+    swtch(&c->context, &p->context);
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+    release(&p->lock);
   }
 }
 
@@ -584,6 +640,7 @@ wakeup(void *chan)
     if(p != myproc()){
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
+        set_min_acc(p);     // set acc to min to give priority to process
         p->state = RUNNABLE;
       }
       release(&p->lock);
@@ -691,5 +748,14 @@ procdump(void)
       state = "???";
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
+  }
+}
+
+void
+set_ps_priority(int pr)
+{
+  struct proc* p = myproc();
+  if(pr >= 1 && pr <= 10){
+    p->ps_priority = pr;
   }
 }
