@@ -1,5 +1,14 @@
 struct stat;
 
+enum cfs_priority {LOW, NORMAL, HIGH};
+
+struct cfs_stats {
+  enum cfs_priority cfs_priority;
+  int rtime;
+  int stime;
+  int retime;
+};
+
 // system calls
 int fork(void);
 int exit(int,char*) __attribute__((noreturn));
@@ -23,7 +32,10 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int memsize(void);
-void set_ps_priority(int);
+void set_ps_priority(int);  // Task 5
+// Task 6
+int set_cfs_priority(int);
+struct cfs_stats* get_cfs_stats(int, struct cfs_stats*);
 
 // ulib.c
 int stat(const char*, struct stat*);

@@ -16,6 +16,16 @@ void kernelvec();
 
 extern int devintr();
 
+// Task 6
+void
+updateticks()
+{
+/**
+ * TODO: update everyones ticks counters
+*/
+}
+
+
 void
 trapinit(void)
 {
@@ -78,6 +88,7 @@ usertrap(void)
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2) {
+    updateticks();
     p->accumulator += p->ps_priority;   // punish the process for exhausting time quantum
     yield();
   }
@@ -156,6 +167,7 @@ kerneltrap()
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2 && p != 0 && p->state == RUNNING)
   {
+    updateticks();
     p->accumulator += p->ps_priority;   // punish the process for exhausting time quantum
     yield();
   }

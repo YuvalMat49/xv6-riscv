@@ -81,6 +81,8 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+enum cfs_priority {LOW, NORMAL, HIGH};
+
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -107,4 +109,16 @@ struct proc {
   char exit_msg[32];           // Exit message (Task3)
   long long accumulator;       // For new process set to 0 (Task5)
   int ps_priority;             // Process priority scale of 1-10 (Task5)
+  enum cfs_priority cfs_priority;
+  int rtime;                   // Run time
+  int stime;                   // Sleep time
+  int retime;                  // Runnable time (ready)
+};
+
+// Task 6
+struct cfs_stats  {
+  enum cfs_priority cfs_priority;
+  int rtime;
+  int stime;
+  int retime;
 };

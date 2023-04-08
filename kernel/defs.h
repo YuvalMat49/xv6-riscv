@@ -8,6 +8,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct cfs_stats;
 
 // bio.c
 void            binit(void);
@@ -107,6 +108,8 @@ int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
 void            set_ps_priority(int);
+int             set_cfs_priority(int);
+struct cfs_stats*  get_cfs_stats(int);
 
 // swtch.S
 void            swtch(struct context*, struct context*);

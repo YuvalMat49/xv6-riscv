@@ -112,3 +112,22 @@ sys_set_ps_priority(void)
   set_ps_priority(pr);
   return 0;
 }
+
+uint64
+sys_set_cfs_priority(void)
+{
+  int pr;
+  argint(0, &pr);
+ return set_cfs_priority(pr);
+}
+
+uint64
+sys_get_cfs_stats(void)
+{
+  int pid;
+  argint(0, &pid);
+  uint64 addr;
+  argaddr(1, &addr);  // I assumed we recieve a pointer to struct cfs_stats. Might need to change
+  struct proc* p = myproc();
+  return copyout(p->pagetable ,addr, get_cfs_stats(pid), sizeof(struct cfs_stats));
+}

@@ -28,7 +28,7 @@ struct spinlock wait_lock;
 
 /**
  * @brief: returns proc with minimal accumulator value
- * @post: proc lock is acquired
+ * @post: returned proc lock is acquired
 */
 struct proc*
 get_min_acc_proc()
@@ -86,6 +86,18 @@ set_min_acc(struct proc* p)
     }
   }
   p->accumulator = minAcc;
+}
+
+// Task 6
+/**
+ * @brief: returns proc with minimal virtual runtime value
+ * @post: returned proc lock is acquired
+*/
+struct proc* get_min_vruntime_proc()
+{
+  /**
+   * TODO: return process with min vruntime - YUVAL
+  */
 }
 
 // Allocate a page for each process's kernel stack.
@@ -190,6 +202,11 @@ found:
   set_min_acc(p);         // set acc to min
   p->ps_priority = 5;     // default init priority is 5
 
+  p->rtime = 0;
+  p->stime = 0;
+  p->retime =0;
+  p->cfs_priority = NORMAL;
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -233,6 +250,10 @@ freeproc(struct proc *p)
   p->exit_msg[0] = 0;
   p->accumulator = 0;
   p->ps_priority = 0;
+  p->cfs_priority = NORMAL;
+  p->rtime = 0;
+  p->stime = 0;
+  p->retime = 0;
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
@@ -356,6 +377,9 @@ fork(void)
     return -1;
   }
 
+  // Copy parent priority
+  np->cfs_priority = p->cfs_priority;
+  
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
@@ -522,8 +546,10 @@ scheduler(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    p = get_min_acc_proc();     // get next process to run
+    // p = get_min_acc_proc();     // get next process to run
+    p = get_min_vruntime_proc();
     if(p==0) {    // no process found
+      release(&p->lock);
       continue;
     }
     // Switch to chosen process.  It is the process's job
@@ -751,6 +777,7 @@ procdump(void)
   }
 }
 
+// Task 5
 void
 set_ps_priority(int pr)
 {
@@ -758,4 +785,30 @@ set_ps_priority(int pr)
   if(pr >= 1 && pr <= 10){
     p->ps_priority = pr;
   }
+}
+
+// Task 6
+int
+set_cfs_priority(int priority)
+{
+  if(priority == LOW || priority == NORMAL || priority == HIGH)  {
+    struct proc* p = myproc();
+    p->cfs_priority = priority;
+    return 0;
+  }
+  return -1;
+}
+
+struct cfs_stats*
+get_cfs_stats(int pid)
+{
+  struct proc* p;
+  struct cfs_stats* stats = 0;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    if (p->pid == pid) {
+      stats = (struct cfs_stats*) &p->cfs_priority;
+      break;
+    }
+  }
+  return stats;
 }
