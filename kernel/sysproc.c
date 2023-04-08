@@ -134,3 +134,11 @@ sys_get_cfs_stats(void)
   argaddr(1,&addr);
   return get_cfs_stats(pid, addr);
 }
+
+uint64
+sys_set_policy(void)
+{
+  int pl;
+  argint(0, &pl);
+  return set_policy(pl);
+}

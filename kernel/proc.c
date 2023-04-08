@@ -15,6 +15,8 @@ struct proc *initproc;
 int nextpid = 1;
 struct spinlock pid_lock;
 
+int sched_policy = 0;     //0-default, 1-priority(acc), 2-priority(CFS)
+
 extern void forkret(void);
 static void freeproc(struct proc *p);
 
@@ -26,6 +28,7 @@ extern char trampoline[]; // trampoline.S
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
 
+// Task 5
 /**
  * @brief: returns proc with minimal accumulator value
  * @post: returned proc lock is acquired
@@ -142,6 +145,21 @@ get_min_vrtime_proc()
     }
   }
   return pToRun;
+}
+
+// default scheduler
+struct proc*
+get_next_re_proc()
+{
+  struct proc *p;
+  for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        return p;
+      }
+      release(&p->lock);
+  }
+  return 0;
 }
 
 // Allocate a page for each process's kernel stack.
@@ -589,8 +607,16 @@ scheduler(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    // p = get_min_acc_proc();     // get next process to run
-    p = get_min_vrtime_proc();
+    if(sched_policy == 0) {   // default
+      p = get_next_re_proc();
+    }
+    else if(sched_policy == 1) {  // priority (acc)
+      p = get_min_acc_proc();
+    }
+    else {  //priority(CFS)
+      p = get_min_vrtime_proc();
+    }
+  
     if(p==0) {    // no process found
       continue;
     }
@@ -842,6 +868,18 @@ get_cfs_stats(int pid, uint64 addr)
     {
       return copyout(myproc()->pagetable, addr,(char*) &p->cfs_priority, sizeof(struct cfs_stats));
     }
+  }
+  return -1;
+}
+
+// Task 7
+int
+set_policy(int policy)
+{
+    if(policy>=0 && policy<=2)
+  {
+    sched_policy = policy;
+    return 0;
   }
   return -1;
 }
