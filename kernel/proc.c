@@ -28,7 +28,7 @@ struct spinlock wait_lock;
 
 /**
  * @brief: returns proc with minimal accumulator value
- * @post: proc lock is acquired
+ * @post: returned proc lock is acquired
 */
 struct proc*
 get_min_acc_proc()
@@ -86,6 +86,62 @@ set_min_acc(struct proc* p)
     }
   }
   p->accumulator = minAcc;
+}
+
+// Task 6
+void
+update_ticks()
+{
+   struct proc *p;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == RUNNING) {p->rtime++;}
+    else if(p->state == RUNNABLE) {p->retime++;}
+    else if(p->state == SLEEPING) {p->stime++;}
+    release(&p->lock);
+  }
+}
+
+int
+calc_vrtime(struct proc* p)
+{
+  int decay = (p->cfs_priority==0)? 125 : (p->cfs_priority==1)? 100 : 75;
+  int total_time = p->rtime + p->stime + p->retime;
+  return decay * p->rtime / total_time;
+}
+
+/**
+ * @brief: returns proc with minimal virtual runtime value
+ * @post: returned proc lock is acquired
+*/
+struct proc*
+get_min_vrtime_proc()
+{
+  struct proc* p;
+  struct proc* pToRun = 0;
+  int minVrtime = -1;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == RUNNABLE) {
+      int currVrtime = calc_vrtime(p);
+      if(minVrtime == -1) {    // first process 
+          pToRun = p;
+          minVrtime = currVrtime;
+      }
+      else if (currVrtime < minVrtime){    // swap
+        release(&pToRun->lock);
+        pToRun = p;
+        minVrtime = currVrtime;
+      }
+      else {
+        release(&p->lock);
+      }
+    }
+    else {
+      release(&p->lock);
+    }
+  }
+  return pToRun;
 }
 
 // Allocate a page for each process's kernel stack.
@@ -189,6 +245,10 @@ found:
 
   set_min_acc(p);         // set acc to min
   p->ps_priority = 5;     // default init priority is 5
+  p->cfs_priority = 1;    // default cfs priority is 1 (NORMAL)
+  p->rtime = 0;
+  p->stime = 0;
+  p->retime = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -233,6 +293,10 @@ freeproc(struct proc *p)
   p->exit_msg[0] = 0;
   p->accumulator = 0;
   p->ps_priority = 0;
+  p->cfs_priority = 1;
+  p->rtime = 0;
+  p->stime = 0;
+  p->retime = 0;
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
@@ -522,7 +586,8 @@ scheduler(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    p = get_min_acc_proc();     // get next process to run
+    // p = get_min_acc_proc();     // get next process to run
+    p = get_min_vrtime_proc();
     if(p==0) {    // no process found
       continue;
     }
@@ -751,6 +816,7 @@ procdump(void)
   }
 }
 
+// Task 5
 void
 set_ps_priority(int pr)
 {
@@ -758,4 +824,21 @@ set_ps_priority(int pr)
   if(pr >= 1 && pr <= 10){
     p->ps_priority = pr;
   }
+}
+
+// Task 6
+/**
+ * @param addr: pointer to cfs_stats struct
+*/
+int
+get_cfs_stats(int pid, uint64 addr)
+{
+  struct proc* p;
+  for(p = proc; p < &proc[NPROC]; p++){
+    if(p->pid == pid)
+    {
+      return copyout(myproc()->pagetable, addr,(char*) &p->cfs_priority, sizeof(struct cfs_stats));
+    }
+  }
+  return -1;
 }

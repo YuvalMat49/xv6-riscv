@@ -112,3 +112,25 @@ sys_set_ps_priority(void)
   set_ps_priority(pr);
   return 0;
 }
+
+uint64
+sys_set_cfs_priority(void)
+{
+  int pr;
+  argint(0, &pr);
+  if(pr>=0 && pr<=2){
+    myproc()->cfs_priority = pr;
+    return 0;
+  }
+  return -1;
+}
+
+uint64
+sys_get_cfs_stats(void)
+{
+  int pid;
+  argint(0, &pid);
+  uint64 addr;
+  argaddr(1,&addr);
+  return get_cfs_stats(pid, addr);
+}
