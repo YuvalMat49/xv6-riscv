@@ -107,4 +107,17 @@ struct proc {
   char exit_msg[32];           // Exit message (Task3)
   long long accumulator;       // For new process set to 0 (Task5)
   int ps_priority;             // Process priority scale of 1-10 (Task5)
+  int cfs_priority;            // 0 - LOW, 1 - NORMAL , 2 - HIGH
+  int rtime;                   // Run time
+  int stime;                   // Sleep time 
+  int retime;                  // Runnable time (ready)
+};
+
+void update_ticks();
+
+struct cfs_stats {
+  int cfs_priority;
+  int rtime;
+  int stime;
+  int retime;
 };

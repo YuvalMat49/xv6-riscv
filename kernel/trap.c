@@ -78,6 +78,7 @@ usertrap(void)
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2) {
+    update_ticks();
     p->accumulator += p->ps_priority;   // punish the process for exhausting time quantum
     yield();
   }
@@ -156,6 +157,7 @@ kerneltrap()
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2 && p != 0 && p->state == RUNNING)
   {
+    update_ticks();
     p->accumulator += p->ps_priority;   // punish the process for exhausting time quantum
     yield();
   }
@@ -172,6 +174,7 @@ clockintr()
 {
   acquire(&tickslock);
   ticks++;
+  // update_ticks();
   wakeup(&ticks);
   release(&tickslock);
 }
