@@ -98,9 +98,15 @@ update_ticks()
    struct proc *p;
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
-    if(p->state == RUNNING) {p->rtime++;}
-    else if(p->state == RUNNABLE) {p->retime++;}
-    else if(p->state == SLEEPING) {p->stime++;}
+    if(p->state == RUNNING) {
+      p->rtime+=1;
+      }
+    else if(p->state == RUNNABLE) {
+      p->retime+=1;
+      }
+    else if(p->state == SLEEPING) {
+      p->stime+=1;
+    }
     release(&p->lock);
   }
 }
@@ -110,6 +116,9 @@ calc_vrtime(struct proc* p)
 {
   int decay = (p->cfs_priority==0)? 125 : (p->cfs_priority==1)? 100 : 75;
   int total_time = p->rtime + p->stime + p->retime;
+  if(total_time==0) {
+    return 0;
+  }
   return decay * p->rtime / total_time;
 }
 
