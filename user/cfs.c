@@ -9,8 +9,7 @@ sleep_and_print_cfs_stats()
     int i;
     for(i=0; i<MAX_VAL; i++) {
         if(i%10000000 == 0) {
-            // printf("went to sleep\n");
-            //  sleep(1);
+            sleep(1);
         }
     }
     struct cfs_stats cfs_stats;
@@ -23,10 +22,9 @@ sleep_and_print_cfs_stats()
 
 int
 main(int argc, char *argv[]) {
-    // set_policy(2);
-    for( int i = 0; i < 3; i++){
+    for( int i = 0; i < 6; i++){
         if(fork() == 0) {
-            set_cfs_priority(i);
+            set_cfs_priority(i%3);
             sleep_and_print_cfs_stats();
             exit(0,"");
         }
@@ -34,6 +32,9 @@ main(int argc, char *argv[]) {
             // sleep(10);
         }
     }
+    wait(0,0);
+    wait(0,0);
+    wait(0,0);
     wait(0,0);
     wait(0,0);
     wait(0,0);

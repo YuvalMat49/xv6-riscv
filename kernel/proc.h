@@ -113,6 +113,7 @@ struct proc {
   int retime;                  // Runnable time (ready)
 };
 
+void set_min_acc(struct proc* p);
 void update_ticks();
 
 struct cfs_stats {
