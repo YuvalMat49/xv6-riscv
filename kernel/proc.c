@@ -40,23 +40,25 @@ get_min_acc_proc()
   struct proc* pToRun = 0;
   long long minAcc = -1;
   for(p = proc; p < &proc[NPROC]; p++) {
-    acquire(&p->lock);
-    if(p->state == RUNNABLE) { 
-      if(minAcc == -1 ) {    // first process 
+    if(p != myproc()){
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) { 
+        if(minAcc == -1 ) {    // first process 
+            pToRun = p;
+            minAcc = p->accumulator;
+        }
+        else if (p->accumulator < minAcc){    // swap
+          release(&pToRun->lock);
           pToRun = p;
           minAcc = p->accumulator;
-      }
-      else if (p->accumulator < minAcc){    // swap
-        release(&pToRun->lock);
-        pToRun = p;
-        minAcc = p->accumulator;
+        }
+        else {
+          release(&p->lock);
+        }
       }
       else {
         release(&p->lock);
-      }
-    }
-    else {
-      release(&p->lock);
+      }  
     }
   }
   return pToRun;
@@ -95,9 +97,8 @@ set_min_acc(struct proc* p)
 void
 update_ticks()
 {
-   struct proc *p;
+  struct proc *p;
   for(p = proc; p < &proc[NPROC]; p++) {
-    acquire(&p->lock);
     if(p->state == RUNNING) {
       p->rtime+=1;
       }
@@ -107,7 +108,6 @@ update_ticks()
     else if(p->state == SLEEPING) {
       p->stime+=1;
     }
-    release(&p->lock);
   }
 }
 
@@ -133,24 +133,26 @@ get_min_vrtime_proc()
   struct proc* pToRun = 0;
   int minVrtime = -1;
   for(p = proc; p < &proc[NPROC]; p++) {
-    acquire(&p->lock);
-    if(p->state == RUNNABLE) {
-      int currVrtime = calc_vrtime(p);
-      if(minVrtime == -1) {    // first process 
+    if(p!=myproc()){
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        int currVrtime = calc_vrtime(p);
+        if(minVrtime == -1) {    // first process 
+            pToRun = p;
+            minVrtime = currVrtime;
+        }
+        else if (currVrtime < minVrtime){    // swap
+          release(&pToRun->lock);
           pToRun = p;
           minVrtime = currVrtime;
-      }
-      else if (currVrtime < minVrtime){    // swap
-        release(&pToRun->lock);
-        pToRun = p;
-        minVrtime = currVrtime;
+        }
+        else {
+          release(&p->lock);
+        }
       }
       else {
         release(&p->lock);
       }
-    }
-    else {
-      release(&p->lock);
     }
   }
   return pToRun;
@@ -446,9 +448,6 @@ fork(void)
   if((np = allocproc()) == 0){
     return -1;
   }
-
-  // Copy priority to child
-  np->cfs_priority = p->cfs_priority;
   
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
@@ -457,6 +456,8 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+  // Copy priority to child
+  np->cfs_priority = p->cfs_priority;
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -571,9 +572,14 @@ wait(uint64 addr, uint64 maddr)
         if(pp->state == ZOMBIE){
           // Found one.
           pid = pp->pid;
-          copyout(p->pagetable, maddr, (char *)pp->exit_msg, sizeof(pp->exit_msg));     // copy exit msg from son to parent
           if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
                                   sizeof(pp->xstate)) < 0) {
+            release(&pp->lock);
+            release(&wait_lock);
+            return -1;
+          }
+          if(maddr != 0 && copyout(p->pagetable, maddr, (char *)&pp->exit_msg,
+                                  sizeof(pp->exit_msg)) < 0) {
             release(&pp->lock);
             release(&wait_lock);
             return -1;
@@ -622,7 +628,7 @@ scheduler(void)
     else if(sched_policy == 1) {  // priority (acc)
       p = get_min_acc_proc();
     }
-    else {  //priority(CFS)
+    else {                    //priority(CFS)
       p = get_min_vrtime_proc();
     }
   
@@ -743,8 +749,10 @@ wakeup(void *chan)
     if(p != myproc()){
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
-        set_min_acc(p);     // set acc to min to give priority to process
         p->state = RUNNABLE;
+        // release(&p->lock);
+        // set_min_acc(p);     // set acc to min to give priority to process
+        // acquire(&p->lock);      
       }
       release(&p->lock);
     }

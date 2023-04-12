@@ -15,7 +15,7 @@ main(int argc, char *argv[])
     printf("Successfully changed policy to: %s\n", pl_type);
   }
   else{
-    printf("Failed to change policy");
+    printf("Failed to change policy\n");
   }
   return 0;
 }
