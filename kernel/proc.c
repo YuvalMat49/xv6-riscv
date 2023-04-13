@@ -77,7 +77,7 @@ set_min_acc(struct proc* p)
   struct proc *p1 = proc;
   for(p1 = proc; p1 < &proc[NPROC]; p1++) {
     if(p1 != p){
-      acquire(&p1->lock);
+      // acquire(&p1->lock);
       if(p1->state == RUNNING || p1->state == RUNNABLE){
         if(!isFound){
           minAcc = p1->accumulator;
@@ -87,7 +87,7 @@ set_min_acc(struct proc* p)
           minAcc = p1->accumulator;
         }
       }
-      release(&p1->lock);
+      // release(&p1->lock);
     }
   }
   p->accumulator = minAcc;
